@@ -24,7 +24,8 @@ def capture_image(image_filename):
     count += 1
     # Initialize the camera
     camera = cv2.VideoCapture(count % 2)  # 0 represents the default camera (you can change it if you have multiple cameras)
-    
+    camera.set(3, 960)
+    camera.set(4, 540)
     # # Adjust camera lighting
     # for i in range(180):
     #     temp = camera.read()
@@ -84,7 +85,7 @@ def detect_cat(image_filename):
                         html_content = f'<div><p>{description}</p><img alt="My Image" src="data:image/jpeg;base64,{image_base64}"></div>'
                         
                         print("[description]: ", description)
-                        # send_email(html_content)
+                        send_email(html_content)
                         last_send_time = datetime.now()
                         print("[send email successful]: ", last_send_time)
 
@@ -93,11 +94,11 @@ def detect_cat(image_filename):
         else:
             print("[no cat]: ", datetime.now())
             # remove image_filename
-            # os.remove(image_filename)
+            os.remove(image_filename)
     else:
         print("[no cat]: ", datetime.now())
         # remove image_filename
-        # os.remove(image_filename)
+        os.remove(image_filename)
 
 if __name__ == "__main__":
     while True:
@@ -113,4 +114,4 @@ if __name__ == "__main__":
             print(f"An error occurred: {e}")
 
         print("Waiting for 30 seconds...")
-        time.sleep(60)  # Wait for 60 seconds (1 minute) before running the function again
+        time.sleep(30)  # Wait for 60 seconds (1 minute) before running the function again
