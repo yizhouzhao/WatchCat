@@ -9,17 +9,25 @@ from dmail import send_email, describe_cat_image
 import requests
 
 last_send_time = datetime(2023, 10, 6, 12)
+detection_list = ['cat', 'dog', 'bear', 'teddy bear']
+count = 0
 
 # Save the captured frame as an image file
 # image_filename = os.path.join("output", "captured_image.jpg")
 
 # Load a model
-model = YOLO("yolov8m.yaml")  # build a new model from scratch
-model = YOLO("yolov8m.pt")  # load a pretrained model (recommended for training)
+#model = YOLO("yolov8m.yaml")  # build a new model from scratch
+model = YOLO("yolov8x.pt")  # load a pretrained model (recommended for training)
 
 def capture_image(image_filename):
+    global count
+    count += 1
     # Initialize the camera
-    camera = cv2.VideoCapture(0)  # 0 represents the default camera (you can change it if you have multiple cameras)
+    camera = cv2.VideoCapture(count % 2)  # 0 represents the default camera (you can change it if you have multiple cameras)
+    
+    # # Adjust camera lighting
+    # for i in range(180):
+    #     temp = camera.read()
 
     # Check if the camera is opened successfully
     if not camera.isOpened():
@@ -43,16 +51,21 @@ def capture_image(image_filename):
 
     print(f"Image captured and saved as {image_filename}")
     
-
+def intersection(lst1, lst2):
+    return list(set(lst1) & set(lst2))
 
 def detect_cat(image_filename):
     global last_send_time
+    # print("[detect_cat]: ")
     results = model(image_filename)  # predict on an image
-    if len(results) > 0:
+    # print("[results]: ", results)
+    if results and len(results) > 0:
         result = results[0]
         result_cls = [result.names[i] for i in result.boxes.cls.tolist()]
 
-        if 'cat' in result_cls:
+        print("result_cls: ", result_cls)
+
+        if intersection(result_cls, detection_list):
             current_time = datetime.now()
             print("[cat is here]", current_time)
             current_hour = datetime.now().hour
@@ -60,7 +73,7 @@ def detect_cat(image_filename):
             
             print("[time_difference]: ", time_difference)
             
-            if time_difference > timedelta(hours=1):
+            if time_difference > timedelta(hours=0.5):
                 if 7 <= current_hour and current_hour < 20:
                     try:
                         with open(image_filename, "rb") as image_file:
@@ -71,14 +84,20 @@ def detect_cat(image_filename):
                         html_content = f'<div><p>{description}</p><img alt="My Image" src="data:image/jpeg;base64,{image_base64}"></div>'
                         
                         print("[description]: ", description)
-                        send_email(html_content)
-                        # last_send_time = datetime.now()
-                        # print("[send email successful]: ", last_send_time)
+                        # send_email(html_content)
+                        last_send_time = datetime.now()
+                        print("[send email successful]: ", last_send_time)
 
                     except Exception as e:
                         print(f"[send email failed]: An error occurred: {e}")
+        else:
+            print("[no cat]: ", datetime.now())
+            # remove image_filename
+            # os.remove(image_filename)
     else:
         print("[no cat]: ", datetime.now())
+        # remove image_filename
+        # os.remove(image_filename)
 
 if __name__ == "__main__":
     while True:
@@ -93,5 +112,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"An error occurred: {e}")
 
-        break
+        print("Waiting for 30 seconds...")
         time.sleep(60)  # Wait for 60 seconds (1 minute) before running the function again
