@@ -1,2 +1,3 @@
 detection/.env
 *.pyc
+/detection/output

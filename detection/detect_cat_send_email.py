@@ -3,19 +3,21 @@ import cv2
 from datetime import datetime, timedelta
 import requests
 import time
+import os
+import base64
+from dmail import send_email, describe_cat_image
+import requests
 
 last_send_time = datetime(2023, 10, 6, 12)
 
-# URL of the endpoint
-url = "http://localhost:8000/api/email/sendCat"
 # Save the captured frame as an image file
-image_filename = "captured_image.jpg"
+# image_filename = os.path.join("output", "captured_image.jpg")
 
 # Load a model
 model = YOLO("yolov8m.yaml")  # build a new model from scratch
 model = YOLO("yolov8m.pt")  # load a pretrained model (recommended for training)
 
-def capture_image():
+def capture_image(image_filename):
     # Initialize the camera
     camera = cv2.VideoCapture(0)  # 0 represents the default camera (you can change it if you have multiple cameras)
 
@@ -40,9 +42,10 @@ def capture_image():
     camera.release()
 
     print(f"Image captured and saved as {image_filename}")
+    
 
 
-def detect_cat():
+def detect_cat(image_filename):
     global last_send_time
     results = model(image_filename)  # predict on an image
     if len(results) > 0:
@@ -60,28 +63,35 @@ def detect_cat():
             if time_difference > timedelta(hours=1):
                 if 7 <= current_hour and current_hour < 20:
                     try:
-                        # Sending a POST request
-                        response = requests.get(url)
-                        last_send_time = datetime.now()
-                        # Checking the response status code
-                        if response.status_code == 200:
-                            print("POST request sent successfully.")
-                            print("[Email sent successfully]: ", last_send_time)
-                            return
-                        else:
-                            print(f"Failed to send POST request. Status code: {response.status_code}")
+                        with open(image_filename, "rb") as image_file:
+                            # Convert the image to base64
+                            image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+
+                        description = describe_cat_image(image_base64)
+                        html_content = f'<div><p>{description}</p><img alt="My Image" src="data:image/jpeg;base64,{image_base64}"></div>'
+                        
+                        print("[description]: ", description)
+                        send_email(html_content)
+                        # last_send_time = datetime.now()
+                        # print("[send email successful]: ", last_send_time)
 
                     except Exception as e:
-                        print(f"An error occurred: {e}")
+                        print(f"[send email failed]: An error occurred: {e}")
     else:
         print("[no cat]: ", datetime.now())
 
 if __name__ == "__main__":
     while True:
         try:
-            capture_image()
-            detect_cat()
+            # Get the current time
+            current_time = datetime.now()
+            # Format the time as a string with seconds
+            time_string = current_time.strftime("%Y_%m_%d_%H_%M_%S")
+            image_filename = os.path.join("output", time_string + ".jpg")
+            capture_image(image_filename)
+            detect_cat(image_filename)
         except Exception as e:
             print(f"An error occurred: {e}")
 
+        break
         time.sleep(60)  # Wait for 60 seconds (1 minute) before running the function again
